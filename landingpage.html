@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Landing Page</title>
+  <script src="https://mozilla.github.io/pdf.js/build/pdf.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+
+  <!-- Header with Simple Shapes -->
+  <div class="bg-blue-500 p-10 text-white relative overflow-hidden">
+    <div class="absolute top-0 left-0 w-1/4 h-32 bg-blue-400 rounded-full -mt-16 -ml-16 z-0"></div>
+    <div class="absolute bottom-0 right-0 w-1/4 h-32 bg-blue-400 rounded-full -mb-16 -mr-16 z-0"></div>
+    <h1 class="text-4xl font-bold z-10 relative">Welcome to Your Project</h1>
+  </div>
+
+  <!-- Main Content -->
+  <div class="container mx-auto p-10">
+
+<!-- PDF Upload Box -->
+<div class="mb-10 relative">
+    <label class="block text-gray-700 text-sm font-bold mb-2" for="pdfUpload">Upload PDF:</label>
+    <div class="p-4 w-full border rounded bg-blue-400 text-white focus:ring focus:ring-blue-200 text-center">
+      <input type="file" id="pdfUpload" accept=".pdf" class="absolute inset-0 opacity-0 cursor-pointer" />
+      <div class="flex flex-col items-center justify-center space-y-2">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+        </svg>
+        <span>Upload</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="uploadStatus" class="mt-2"></div>
+
+  
+
+
+    <!-- Chat Interface -->
+    <div class="bg-white p-5 rounded shadow">
+      <h2 class="text-2xl font-bold mb-3">Chat Interface</h2>
+      <div id="chatBox" class="h-60 border rounded p-3 overflow-y-auto">
+        <!-- Chat messages will go here -->
+      </div>
+      <div class="flex items-center mt-3">
+        <input type="text" id="userInput" placeholder="Type your question..." class="flex-grow p-2 border rounded">
+        <button id="sendButton" class="ml-2 p-2 bg-blue-500 text-white rounded">Send</button>
+      </div>
+      
+    </div>
+  </div>
+
+  <script>
+    const fileInput = document.getElementById('pdfUpload');
+    const uploadStatus = document.getElementById('uploadStatus');
+  
+    fileInput.addEventListener('change', function() {
+      const fileSize = this.files[0].size / 1024 / 1024; // in MB
+      if (fileSize > 10) {
+        uploadStatus.innerHTML = '<span class="text-red-500">File size exceeds 10 MB</span>';
+        this.value = ''; // Reset the input
+      } else {
+        // Handle PDF upload
+        // For now, we'll just update the status. In a real application, you'd send the file to the server here.
+        uploadStatus.innerHTML = '<span class="text-green-500">PDF uploaded successfully &#x2713;</span>';
+      }
+    });
+  </script>
+  
+  <script>
+   // Read PDF content
+let pdfContent = "";
+
+
+fileInput.addEventListener('change', async function() {
+    const file = this.files[0];
+    const reader = new FileReader();
+    reader.onload = async function(event) {
+        const pdfData = new Uint8Array(event.target.result);
+        const pdf = await pdfjsLib.getDocument({data: pdfData}).promise;
+        const page = await pdf.getPage(1);  // Reading only the first page for this example
+        const content = await page.getTextContent();
+        pdfContent = content.items.map(item => item.str).join(' ');
+    };
+    reader.readAsArrayBuffer(file);
+});
+
+// Chatbot code
+const sendButton = document.getElementById('sendButton');
+const chatBox = document.getElementById('chatBox');
+const userInput = document.getElementById('userInput');
+
+sendButton.addEventListener('click', async function() {
+    const userQuestion = userInput.value;
+    if (userQuestion.trim() === '') return; // Ignore empty messages
+
+    // Append user question to chat box
+    chatBox.innerHTML += `<div class="text-blue-500">User: ${userQuestion}</div>`;
+
+    // Make API call to your Flask server
+    const response = await fetch('http://127.0.0.1:5000/ask', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            question: userQuestion,
+            pdf_content: pdfContent  // Use the variable, not a string
+        })
+    });
+
+    const data = await response.json();
+    const answer = data.answer;
+
+    // Append answer to chat box
+    chatBox.innerHTML += `<div class="text-green-500">Bot: ${answer}</div>`;
+
+    // Clear the user input
+    userInput.value = '';
+
+    // Scroll to the bottom of the chat box
+    chatBox.scrollTop = chatBox.scrollHeight;
+});
+
+
+  </script>
+  
+  
+
+
+
+</body>
+</html>
+
