@@ -5,13 +5,14 @@ import openai
 from flask_cors import CORS
 
 # Load environment variables
-load_dotenv()
+load_dotenv("key.env")
 
 # Initialize Flask app
 app = Flask(__name__)
 
 # Enable CORS for all routes
-CORS(app, origins=["http://127.0.0.1:5500"])
+CORS(app, origins=["http://127.0.0.1:5500", "http://127.0.0.1:5000"])
+
 
 # Get OpenAI API key from environment variable
 openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -20,20 +21,33 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 def ask():
     question = request.json.get('question')
     pdf_content = request.json.get('pdf_content')  # You would extract this from the uploaded PDF
+    context_note = "Note: When referring to 'Page X', it means the Xth page of the given PDF content."
 
-    # Make API call to OpenAI GPT-3 (this is a simplified example)
-    response = openai.Completion.create(
-        engine="text-davinci-002",
-        prompt=f"PDF Content: {pdf_content}\nQuestion: {question}\nAnswer:",
-        max_tokens=50
+    # Prepare the prompt
+    prompt_text = f"{context_note}\nPDF Content: {pdf_content}\nQuestion: {question}\nAnswer:"
+
+    # Print the prompt to the terminal for debugging
+    print(f"Sending the following prompt to OpenAI: {prompt_text}")
+    print(f"Received PDF content: {pdf_content}")
+    print(f"Received question: {question}")
+
+
+    # Make API call to OpenAI GPT-3.5 (this is a simplified example)
+    response = openai.ChatCompletion.create(
+    model="gpt-3.5-turbo-16k",
+    messages=[
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": f"{context_note}\nPDF Content: {pdf_content}"},  # Include context_note here
+        {"role": "user", "content": f"Question: {question}"}
+    ]
     )
 
-    answer = response.choices[0].text.strip()
+
+    answer = response['choices'][0]['message']['content'].strip()
+
 
     return jsonify({"answer": answer})
 
-if __name__ == '__main__':
-    app.run(debug=True)
 
 @app.after_request
 def after_request(response):
@@ -41,6 +55,11 @@ def after_request(response):
     response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
     response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE')
     return response
+
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
 
 
 

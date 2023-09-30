@@ -73,18 +73,66 @@
 let pdfContent = "";
 
 
+// getting all text from pdf
 fileInput.addEventListener('change', async function() {
     const file = this.files[0];
     const reader = new FileReader();
     reader.onload = async function(event) {
         const pdfData = new Uint8Array(event.target.result);
         const pdf = await pdfjsLib.getDocument({data: pdfData}).promise;
-        const page = await pdf.getPage(1);  // Reading only the first page for this example
-        const content = await page.getTextContent();
-        pdfContent = content.items.map(item => item.str).join(' ');
+
+        // Ensure we get the number of pages
+        const numPages = await pdf.numPages;  
+        console.log(`Number of pages: ${numPages}`);
+
+        // Collect all the promises
+        const pagePromises = [];
+
+        for (let i = 1; i <= Math.min(numPages, 15); i++) {
+            console.log(`Reading page ${i}`);
+            pagePromises.push(
+                pdf.getPage(i).then(async (page) => {
+                    const content = await page.getTextContent();
+                    console.log(`Page ${i} content: ${content.items.map(item => item.str).join(' ').slice(0, 100)}...`);
+
+                    return `[PDF Page ${i}]\n${content.items.map(item => item.str).join(' ')}\n[End PDF Page ${i}]`;
+                    // Inside the pdf.getPage(i).then(async (page) => {...}) block
+
+                })
+            );
+        }
+
+        // Wait for all promises to resolve
+        const allPagesContent = await Promise.all(pagePromises);
+
+        console.log(`All pages content:`, allPagesContent);  // To see each page separately
+        console.log(`Combined PDF content (first 100 characters): ${pdfContent.slice(0, 100)}...`);  // To see the beginning of the combined content
+
+
+        // Join them into one string
+        pdfContent = allPagesContent.join('\n');
+
+        console.log(`Read content: ${pdfContent.slice(0, 100)}...`);  // Output some of the content for debugging
+        
     };
     reader.readAsArrayBuffer(file);
 });
+
+
+
+
+// fileInput.addEventListener('change', async function() {
+//     const file = this.files[0];
+//     const reader = new FileReader();
+//     reader.onload = async function(event) {
+//         const pdfData = new Uint8Array(event.target.result);
+//         const pdf = await pdfjsLib.getDocument({data: pdfData}).promise;
+//         const page = await pdf.getPage(5);  // Reading only the first five page for this example
+//         const content = await page.getTextContent();
+//         pdfContent = content.items.map(item => item.str).join(' ');
+//     };
+//     reader.readAsArrayBuffer(file);
+// });
 
 // Chatbot code
 const sendButton = document.getElementById('sendButton');
@@ -122,6 +170,17 @@ sendButton.addEventListener('click', async function() {
     // Scroll to the bottom of the chat box
     chatBox.scrollTop = chatBox.scrollHeight;
 });
+
+userInput.addEventListener('keydown', function(event) {
+  // Check if the Enter key was pressed
+  if (event.keyCode === 13) {
+    // Prevent the default action to stop scrolling when pressing Enter
+    event.preventDefault();
+    // Trigger the sendButton click event
+    sendButton.click();
+  }
+});
+
 
 
   </script>
