@@ -36,7 +36,7 @@ def ask():
     response = openai.ChatCompletion.create(
     model="gpt-3.5-turbo-16k",
     messages=[
-        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "system", "content": "You are a helpful assistant. When you see 'Page X:', it refers to the page number from the PDF document. Bullet points, and other random symbols are not page starters, they are just formatting so ignore those for identifying page numbers"},
         {"role": "user", "content": f"{context_note}\nPDF Content: {pdf_content}"},  # Include context_note here
         {"role": "user", "content": f"Question: {question}"}
     ]
